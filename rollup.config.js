@@ -8,6 +8,8 @@ import pkg from './package.json';
 const ensureArray = maybeArr =>
   Array.isArray(maybeArr) ? maybeArr : [maybeArr];
 
+const extensions = ['.js', '.ts', '.tsx'];
+
 const external = Object.keys(pkg.peerDependencies || {});
 const allExternal = external.concat(Object.keys(pkg.dependencies || {}));
 
@@ -23,38 +25,40 @@ const createConfig = ({ output, browser = false, umd = false, env } = {}) => {
   const min = env === 'production';
 
   return {
-    input: 'src/index.js',
+    input: 'src/index.tsx',
     output: ensureArray(output).map(format =>
       Object.assign({}, format, {
         name: 'TextareaAutosize',
         exports: 'named',
         globals: {
-          react: 'React'
-        }
-      })
+          react: 'React',
+        },
+      }),
     ),
     plugins: [
       nodeResolve({
-        jsnext: true
+        jsnext: true,
+        extensions,
       }),
       babel({
+        extensions,
         exclude: 'node_modules/**',
         runtimeHelpers: true,
         plugins: [
           [
             '@babel/transform-runtime',
-            { useESModules: output.format !== 'cjs' }
-          ]
-        ]
+            { useESModules: output.format !== 'cjs' },
+          ],
+        ],
       }),
       commonjs(),
       replace(
         Object.assign(
           env ? { 'process.env.NODE_ENV': JSON.stringify(env) } : {},
           {
-            'process.env.BROWSER': JSON.stringify(browser)
-          }
-        )
+            'process.env.BROWSER': JSON.stringify(browser),
+          },
+        ),
       ),
       min &&
         uglify({
@@ -62,39 +66,39 @@ const createConfig = ({ output, browser = false, umd = false, env } = {}) => {
             pure_getters: true,
             unsafe: true,
             unsafe_comps: true,
-            warnings: false
-          }
-        })
+            warnings: false,
+          },
+        }),
     ].filter(Boolean),
-    external: makeExternalPredicate(umd ? external : allExternal)
+    external: makeExternalPredicate(umd ? external : allExternal),
   };
 };
 
 const configs = {
   browser_cjs: {
     output: { file: pkg.browser[pkg.main], format: 'cjs' },
-    browser: true
+    browser: true,
   },
   browser_esm: {
     output: { file: pkg.browser[pkg.module], format: 'esm' },
-    browser: true
+    browser: true,
   },
   regular_cjs: {
-    output: { file: pkg.main, format: 'cjs' }
+    output: { file: pkg.main, format: 'cjs' },
   },
   regular_esm: {
-    output: { file: pkg.module, format: 'esm' }
+    output: { file: pkg.module, format: 'esm' },
   },
   umd_prod: {
     output: { file: pkg.unpkg.replace(/\.min\.js$/, '.js'), format: 'umd' },
     umd: true,
-    env: 'development'
+    env: 'development',
   },
   umd: {
     output: { file: pkg.unpkg, format: 'umd' },
     umd: true,
-    env: 'production'
-  }
+    env: 'production',
+  },
 };
 
 const buildTypes = Object.keys(configs);
